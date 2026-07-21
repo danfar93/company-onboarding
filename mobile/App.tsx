@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -54,45 +56,96 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar style="dark" />
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        {/*
+          KeyboardAvoidingView keeps the pinned footer (and its button) above
+          the keyboard. On iOS we pad by the keyboard height; on Android the
+          window's adjustResize already shrinks the view, so no behavior is set.
+        */}
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {step === 'input' && (
-            <InputStep
-              email={email}
-              website={website}
-              loading={loading}
-              error={error}
-              onChangeEmail={setEmail}
-              onChangeWebsite={setWebsite}
-              onSubmit={handleSubmit}
-            />
-          )}
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {step === 'input' && (
+              <InputStep
+                email={email}
+                website={website}
+                onChangeEmail={setEmail}
+                onChangeWebsite={setWebsite}
+              />
+            )}
 
-          {step === 'review' && result && (
-            <ReviewStep result={result} onConfirm={handleConfirm} />
-          )}
+            {step === 'review' && result && <ReviewStep result={result} />}
 
-          {step === 'confirm' && <ConfirmStep />}
-        </ScrollView>
+            {step === 'confirm' && <ConfirmStep />}
+          </ScrollView>
+
+          {step !== 'confirm' && (
+            <View style={styles.footer}>
+              {step === 'input' && error && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              {step === 'input' && (
+                <PrimaryButton
+                  label="Continue"
+                  onPress={handleSubmit}
+                  loading={loading}
+                  disabled={!email || !website}
+                />
+              )}
+
+              {step === 'review' && (
+                <PrimaryButton label="Looks good" onPress={handleConfirm} />
+              )}
+            </View>
+          )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </SafeAreaProvider>
+  );
+}
+
+function PrimaryButton(props: {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const disabled = props.disabled || props.loading;
+  return (
+    <Pressable
+      onPress={props.onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.button,
+        disabled && styles.buttonDisabled,
+        pressed && !disabled && styles.buttonPressed,
+      ]}
+    >
+      {props.loading ? (
+        <ActivityIndicator color={colors.textInverse} />
+      ) : (
+        <Text style={styles.buttonText}>{props.label}</Text>
+      )}
+    </Pressable>
   );
 }
 
 function InputStep(props: {
   email: string;
   website: string;
-  loading: boolean;
-  error: string | null;
   onChangeEmail: (value: string) => void;
   onChangeWebsite: (value: string) => void;
-  onSubmit: () => void;
 }) {
   const [focused, setFocused] = useState<'email' | 'website' | null>(null);
-  const disabled = props.loading || !props.email || !props.website;
 
   return (
     <View>
@@ -136,33 +189,11 @@ function InputStep(props: {
           />
         </View>
       </View>
-
-      <Pressable
-        onPress={props.onSubmit}
-        disabled={disabled}
-        style={({ pressed }) => [
-          styles.button,
-          disabled && styles.buttonDisabled,
-          pressed && !disabled && styles.buttonPressed,
-        ]}
-      >
-        {props.loading ? (
-          <ActivityIndicator color={colors.textInverse} />
-        ) : (
-          <Text style={styles.buttonText}>Continue</Text>
-        )}
-      </Pressable>
-
-      {props.error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{props.error}</Text>
-        </View>
-      )}
     </View>
   );
 }
 
-function ReviewStep(props: { result: EnrichResponse; onConfirm: () => void }) {
+function ReviewStep(props: { result: EnrichResponse }) {
   // TODO (candidate): replace this JSON dump with a proper review UI.
   // - Show each field with its source and confidence
   // - Highlight low-confidence fields
@@ -179,13 +210,6 @@ function ReviewStep(props: { result: EnrichResponse; onConfirm: () => void }) {
           {JSON.stringify(props.result, null, 2)}
         </Text>
       </View>
-
-      <Pressable
-        onPress={props.onConfirm}
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-      >
-        <Text style={styles.buttonText}>Looks good</Text>
-      </Pressable>
     </View>
   );
 }
@@ -204,8 +228,9 @@ function ConfirmStep() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: spacing.xl, paddingTop: spacing.xl },
+  scroll: { padding: spacing.xl, paddingTop: spacing.xl, flexGrow: 1 },
 
   // Typography
   h1: { ...typography.h1, marginBottom: spacing.sm },
@@ -239,6 +264,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
 
+  // Pinned footer action bar
+  footer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+    gap: spacing.md,
+  },
+
   // Buttons
   button: {
     backgroundColor: colors.brand,
@@ -247,7 +283,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    marginTop: spacing.xs,
     ...shadow.card,
   },
   buttonDisabled: { backgroundColor: colors.brandDisabled, shadowOpacity: 0 },
@@ -256,7 +291,6 @@ const styles = StyleSheet.create({
 
   // Error
   errorBox: {
-    marginTop: spacing.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.dangerBorder,
