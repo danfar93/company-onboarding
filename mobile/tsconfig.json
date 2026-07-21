@@ -1,6 +1,13 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "paths": {
+      // Single shared enrichment contract, owned by the backend. Imported here
+      // only as `import type`, so it is erased from the bundle (Metro never
+      // resolves it) — no monorepo/watchFolders config needed. Keep it
+      // types-only for this to hold.
+      "@shared/*": ["../backend/src/enrichment/*"]
+    }
   }
 }

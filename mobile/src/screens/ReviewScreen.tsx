@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Stepper } from '../components/Stepper';
 import type { Step } from '../onboarding';
-import type { EnrichResponse } from '../types';
+import type { EnrichResponse } from '@shared/types';
 import { colors, radius, shadow, spacing, typography } from '../theme';
 
 export function ReviewScreen(props: {

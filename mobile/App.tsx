@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { enrich } from './src/api';
-import type { EnrichResponse } from './src/types';
+import type { EnrichResponse } from '@shared/types';
 import { PrimaryButton } from './src/components/PrimaryButton';
 import { InputScreen } from './src/screens/InputScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
