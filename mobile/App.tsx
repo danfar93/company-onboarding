@@ -13,6 +13,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { enrich } from './src/api';
 import type { EnrichResponse } from './src/types';
+import { colors, radius, shadow, spacing, typography } from './src/theme';
 
 type Step = 'input' | 'review' | 'confirm';
 
@@ -52,10 +53,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {step === 'input' && (
             <InputStep
@@ -89,6 +91,9 @@ function InputStep(props: {
   onChangeWebsite: (value: string) => void;
   onSubmit: () => void;
 }) {
+  const [focused, setFocused] = useState<'email' | 'website' | null>(null);
+  const disabled = props.loading || !props.email || !props.website;
+
   return (
     <View>
       <Text style={styles.h1}>Company Onboarding</Text>
@@ -96,46 +101,53 @@ function InputStep(props: {
         Enter your details and we'll fill in the rest
       </Text>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Work Email</Text>
-        <TextInput
-          value={props.email}
-          onChangeText={props.onChangeEmail}
-          placeholder="you@company.com"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          style={styles.input}
-        />
-      </View>
+      <View style={styles.card}>
+        <View style={styles.field}>
+          <Text style={styles.label}>Work Email</Text>
+          <TextInput
+            value={props.email}
+            onChangeText={props.onChangeEmail}
+            onFocus={() => setFocused('email')}
+            onBlur={() => setFocused(null)}
+            placeholder="you@company.com"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            style={[styles.input, focused === 'email' && styles.inputFocused]}
+          />
+        </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Company Website</Text>
-        <TextInput
-          value={props.website}
-          onChangeText={props.onChangeWebsite}
-          placeholder="https://company.com"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          textContentType="URL"
-          style={styles.input}
-        />
+        <View style={styles.fieldLast}>
+          <Text style={styles.label}>Company Website</Text>
+          <TextInput
+            value={props.website}
+            onChangeText={props.onChangeWebsite}
+            onFocus={() => setFocused('website')}
+            onBlur={() => setFocused(null)}
+            placeholder="https://company.com"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            textContentType="URL"
+            style={[styles.input, focused === 'website' && styles.inputFocused]}
+          />
+        </View>
       </View>
 
       <Pressable
         onPress={props.onSubmit}
-        disabled={props.loading || !props.email || !props.website}
+        disabled={disabled}
         style={({ pressed }) => [
           styles.button,
-          (props.loading || !props.email || !props.website) &&
-            styles.buttonDisabled,
-          pressed && styles.buttonPressed,
+          disabled && styles.buttonDisabled,
+          pressed && !disabled && styles.buttonPressed,
         ]}
       >
         {props.loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.textInverse} />
         ) : (
           <Text style={styles.buttonText}>Continue</Text>
         )}
@@ -182,6 +194,9 @@ function ConfirmStep() {
   // TODO (candidate): make this feel like a real success screen.
   return (
     <View style={styles.confirmBox}>
+      <View style={styles.successBadge}>
+        <Text style={styles.successCheck}>✓</Text>
+      </View>
       <Text style={styles.h1}>You're all set</Text>
       <Text style={styles.subtitle}>Company details saved.</Text>
     </View>
@@ -189,48 +204,89 @@ function ConfirmStep() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f7f7f8' },
-  scroll: { padding: 20, paddingTop: 32 },
-  h1: { fontSize: 28, fontWeight: '700', marginBottom: 8, color: '#111' },
-  subtitle: { fontSize: 15, color: '#555', marginBottom: 24 },
-  field: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: '#333' },
+  safe: { flex: 1, backgroundColor: colors.background },
+  scroll: { padding: spacing.xl, paddingTop: spacing.xl },
+
+  // Typography
+  h1: { ...typography.h1, marginBottom: spacing.sm },
+  subtitle: { ...typography.subtitle, marginBottom: spacing.xxl },
+  label: { ...typography.label, marginBottom: spacing.sm },
+
+  // Card / inputs
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.xl,
+    ...shadow.card,
+  },
+  field: { marginBottom: spacing.lg },
+  fieldLast: { marginBottom: 0 },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#d6d6db',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     fontSize: 16,
+    color: colors.textPrimary,
   },
+  inputFocused: {
+    borderColor: colors.brand,
+    backgroundColor: colors.surface,
+  },
+
+  // Buttons
   button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: colors.brand,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    minHeight: 52,
+    marginTop: spacing.xs,
+    ...shadow.card,
   },
-  buttonDisabled: { backgroundColor: '#9bb6f0' },
-  buttonPressed: { opacity: 0.85 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonDisabled: { backgroundColor: colors.brandDisabled, shadowOpacity: 0 },
+  buttonPressed: { backgroundColor: colors.brandDark },
+  buttonText: { ...typography.button, color: colors.textInverse },
+
+  // Error
   errorBox: {
-    marginTop: 16,
-    padding: 12,
+    marginTop: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
-    borderRadius: 10,
+    borderColor: colors.dangerBorder,
+    backgroundColor: colors.dangerTint,
+    borderRadius: radius.md,
   },
-  errorText: { color: '#b91c1c' },
+  errorText: { color: colors.danger, fontSize: 14 },
+
+  // JSON preview (placeholder until Review UI is built)
   jsonBox: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 16,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+    ...shadow.card,
   },
-  jsonText: { fontFamily: 'Menlo', fontSize: 12, color: '#111' },
+  jsonText: { fontFamily: 'Menlo', fontSize: 12, color: colors.textPrimary },
+
+  // Success
   confirmBox: { paddingTop: 80, alignItems: 'center' },
+  successBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  successCheck: { fontSize: 36, color: colors.accentDark, fontWeight: '700' },
 });
