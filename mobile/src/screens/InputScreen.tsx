@@ -2,44 +2,36 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Stepper } from '../components/Stepper';
-import type { Step } from '../onboarding';
-import type { InputValidation } from '../validation';
+import { useOnboarding } from '../state/OnboardingContext';
+import { validateInput } from '../validation';
 import { colors, radius, shadow, spacing, typography } from '../theme';
 
-export function InputScreen(props: {
-  email: string;
-  website: string;
-  onChangeEmail: (value: string) => void;
-  onChangeWebsite: (value: string) => void;
-  reachedIndex: number;
-  onSelect: (step: Step) => void;
-  validation: InputValidation;
-}) {
+export function InputScreen() {
+  const { state, dispatch } = useOnboarding();
+  const { email, website } = state.input;
+  const validation = validateInput(email, website);
+
   const [focused, setFocused] = useState<'email' | 'website' | null>(null);
-  const { validation } = props;
 
-  const emailTouched = props.email.trim() !== '';
-  const websiteTouched = props.website.trim() !== '';
+  const emailTouched = email.trim() !== '';
+  const websiteTouched = website.trim() !== '';
 
-  // Only surface messages once a field has content and isn't being edited, so we
-  // don't nag mid-typing.
+  // Only surface messages once a field has content and isn't being edited.
   const showEmailError =
     emailTouched && !validation.emailValid && focused !== 'email';
   const showMismatch =
     websiteTouched && validation.websiteMismatch && focused !== 'website';
 
-  // Offer autofill when the email yields a business domain the website doesn't
-  // already contain.
   const canAutofill =
     validation.suggestedWebsite !== null &&
-    props.website.trim() !== validation.suggestedWebsite;
+    website.trim() !== validation.suggestedWebsite;
 
   return (
     <View>
       <Stepper
         current="input"
-        reachedIndex={props.reachedIndex}
-        onSelect={props.onSelect}
+        reachedIndex={state.maxReached}
+        onSelect={(step) => dispatch({ type: 'GO_TO_STEP', step })}
       />
 
       <Text style={styles.h1}>Company Onboarding</Text>
@@ -51,8 +43,8 @@ export function InputScreen(props: {
         <View style={styles.field}>
           <Text style={styles.label}>Work Email</Text>
           <TextInput
-            value={props.email}
-            onChangeText={props.onChangeEmail}
+            value={email}
+            onChangeText={(value) => dispatch({ type: 'SET_INPUT', email: value })}
             onFocus={() => setFocused('email')}
             onBlur={() => setFocused(null)}
             placeholder="you@company.com"
@@ -68,9 +60,7 @@ export function InputScreen(props: {
             ]}
           />
           {showEmailError && (
-            <Text style={styles.errorText}>
-              Enter a valid email address
-            </Text>
+            <Text style={styles.errorText}>Enter a valid email address</Text>
           )}
         </View>
 
@@ -80,7 +70,10 @@ export function InputScreen(props: {
             {canAutofill && (
               <Pressable
                 onPress={() =>
-                  props.onChangeWebsite(validation.suggestedWebsite ?? '')
+                  dispatch({
+                    type: 'SET_INPUT',
+                    website: validation.suggestedWebsite ?? '',
+                  })
                 }
                 hitSlop={8}
                 accessibilityRole="button"
@@ -93,8 +86,10 @@ export function InputScreen(props: {
             )}
           </View>
           <TextInput
-            value={props.website}
-            onChangeText={props.onChangeWebsite}
+            value={website}
+            onChangeText={(value) =>
+              dispatch({ type: 'SET_INPUT', website: value })
+            }
             onFocus={() => setFocused('website')}
             onBlur={() => setFocused(null)}
             placeholder="https://company.com"

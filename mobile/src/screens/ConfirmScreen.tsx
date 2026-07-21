@@ -1,20 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Stepper } from '../components/Stepper';
-import type { Step } from '../onboarding';
+import { useOnboarding } from '../state/OnboardingContext';
 import { colors, radius, spacing, typography } from '../theme';
 
-export function ConfirmScreen(props: {
-  reachedIndex: number;
-  onSelect: (step: Step) => void;
-}) {
-  // TODO (candidate): make this feel like a real success screen.
+export function ConfirmScreen() {
+  const { state, dispatch } = useOnboarding();
+
   return (
     <View>
       <Stepper
         current="confirm"
-        reachedIndex={props.reachedIndex}
-        onSelect={props.onSelect}
+        reachedIndex={state.maxReached}
+        onSelect={(step) => dispatch({ type: 'GO_TO_STEP', step })}
       />
 
       <View style={styles.confirmBox}>
