@@ -15,6 +15,7 @@
 import { normaliseInput } from './input';
 import { assemble } from './merge';
 import { companiesHouseSource } from './sources/companiesHouse';
+import { websiteSource } from './sources/website';
 import type { FetchLike, SourceResult } from './source';
 import type { EnrichResponse } from './types';
 
@@ -52,9 +53,10 @@ export async function enrichCompany(
     return assemble(results);
   }
 
-  // 2. TODO (next): website scraping when Companies House can't resolve —
-  //    self-reported name / reg number / address from the homepage.
-  //
+  // 2. Company website — self-reported fallback when CH can't resolve. Free.
+  const web = await websiteSource(input, { fetch: fetchFn });
+  results.push(web);
+
   // 3. TODO (last resort): Claude for soft fields (industry, trade name),
   //    grounded on scraped website text. Only reached here, to cap API spend.
 
