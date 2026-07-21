@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   field: { marginBottom: spacing.lg },
   fieldLast: { marginBottom: 0 },
   input: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,

@@ -37,6 +37,7 @@ export const colors = {
   background: '#FBFAF9', // warm off-white app canvas (--background)
   surface: '#FFFFFF', // cards, inputs (--card / --input)
   surfaceAlt: '#F6F3EF', // muted warm cream (--muted / --accent)
+  inputBg: '#F1F2F4', // resting (non-focused) text-field background
 
   // Text
   textPrimary: '#2B2A3F', // indigo-charcoal (--foreground)
