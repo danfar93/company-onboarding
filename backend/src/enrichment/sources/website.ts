@@ -58,7 +58,7 @@ export async function websiteSource(
   // is a weaker last resort (low).
   const ogName = metaContent(html, 'og:site_name');
   const ldName = typeof org?.name === 'string' ? org.name.trim() : undefined;
-  const titleName = nameFromTitle(html, input.host);
+  const titleName = nameFromTitle(html);
   if (ogName || ldName) {
     company.name = (ogName ?? ldName)!.trim();
     confidence.name = 'medium';
@@ -86,7 +86,31 @@ export async function websiteSource(
     company,
     confidence,
     warning: matched ? undefined : 'No company details found on website',
+    // Grounding text for the LLM fallback, regardless of whether we matched
+    // structured fields — the description often reveals the industry.
+    excerpt: buildExcerpt(html),
   };
+}
+
+/** Title + description + first headings, for grounding the LLM (capped). */
+function buildExcerpt(html: string): string | undefined {
+  const parts: string[] = [];
+  const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  if (title) parts.push(decode(title).replace(/\s+/g, ' ').trim());
+
+  const description =
+    metaContent(html, 'og:description') ?? metaContent(html, 'description');
+  if (description) parts.push(description);
+
+  const headings = [...html.matchAll(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi)]
+    .slice(0, 5)
+    .map((m) => decode(m[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  parts.push(...headings);
+
+  const text = parts.filter(Boolean).join('\n').trim();
+  if (!text) return undefined;
+  return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
 }
 
 // --- HTML helpers ---------------------------------------------------------
@@ -116,7 +140,7 @@ const GENERIC_TITLE = new Set([
   'official website',
 ]);
 
-function nameFromTitle(html: string, host: string | null): string | undefined {
+function nameFromTitle(html: string): string | undefined {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (!m) return undefined;
   const raw = decode(m[1]).replace(/\s+/g, ' ').trim();

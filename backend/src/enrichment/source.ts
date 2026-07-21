@@ -43,6 +43,12 @@ export interface SourceResult {
   confidence: Partial<Record<Field, Confidence>>;
   /** Set when the source failed or degraded, for transparency. */
   warning?: string;
+  /**
+   * Optional plain-text excerpt this source gathered (e.g. the website's title
+   * and description). Not merged into the record — carried so a later source
+   * (the LLM) can ground its inference on real page text.
+   */
+  excerpt?: string;
 }
 
 /** Lower a confidence by one notch (for coarser, derived fields). */

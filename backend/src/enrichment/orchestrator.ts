@@ -16,6 +16,7 @@ import { normaliseInput } from './input';
 import { assemble } from './merge';
 import { companiesHouseSource } from './sources/companiesHouse';
 import { websiteSource } from './sources/website';
+import { anthropicComplete, llmSource, type ClaudeComplete } from './sources/llm';
 import type { FetchLike, SourceResult } from './source';
 import type { EnrichResponse } from './types';
 
@@ -24,6 +25,8 @@ export interface OrchestratorDeps {
   companiesHouseApiKey?: string;
   companiesHouseApiBase?: string;
   claudeApiKey?: string;
+  /** Injected Claude completion (for tests); defaults to the Anthropic SDK. */
+  claudeComplete?: ClaudeComplete;
 }
 
 export async function enrichCompany(
@@ -37,6 +40,10 @@ export async function enrichCompany(
     deps.companiesHouseApiKey ?? process.env.COMPANIES_HOUSE_API_KEY;
   const chApiBase =
     deps.companiesHouseApiBase ?? process.env.COMPANIES_HOUSE_API_BASE;
+  const claudeApiKey = deps.claudeApiKey ?? process.env.CLAUDE_API_KEY;
+  const claudeComplete =
+    deps.claudeComplete ??
+    (claudeApiKey ? anthropicComplete(claudeApiKey) : undefined);
 
   const input = normaliseInput(email, website);
   const results: SourceResult[] = [];
@@ -57,8 +64,13 @@ export async function enrichCompany(
   const web = await websiteSource(input, { fetch: fetchFn });
   results.push(web);
 
-  // 3. TODO (last resort): Claude for soft fields (industry, trade name),
-  //    grounded on scraped website text. Only reached here, to cap API spend.
+  // 3. Claude — last resort for soft fields (industry, trade name), grounded on
+  //    the text the website scrape already gathered. Only reached when the free
+  //    sources come up short, to cap paid API usage.
+  const industryStillMissing = !results.some((r) => r.company.industry);
+  if (claudeComplete && industryStillMissing) {
+    results.push(await llmSource(web.excerpt, claudeComplete));
+  }
 
   return assemble(results);
 }
