@@ -17,6 +17,7 @@ import { InputScreen } from './src/screens/InputScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { ConfirmScreen } from './src/screens/ConfirmScreen';
 import { stepIndex, type Step } from './src/onboarding';
+import { validateInput } from './src/validation';
 import { colors, radius, spacing } from './src/theme';
 
 export default function App() {
@@ -29,6 +30,8 @@ export default function App() {
   // Furthest step the user has unlocked. Steps up to here are tappable in the
   // progress indicator, so they can move back and forward freely.
   const [maxReached, setMaxReached] = useState(0);
+
+  const validation = validateInput(email, website);
 
   // TODO (candidate): the in-progress flow should survive the app being
   // backgrounded or killed. If the user closes the app on the Review step,
@@ -93,6 +96,7 @@ export default function App() {
                 onChangeWebsite={setWebsite}
                 reachedIndex={maxReached}
                 onSelect={setStep}
+                validation={validation}
               />
             )}
 
@@ -121,7 +125,7 @@ export default function App() {
                 label="Continue"
                 onPress={handleSubmit}
                 loading={loading}
-                disabled={!email || !website}
+                disabled={!validation.canContinue}
               />
             )}
 

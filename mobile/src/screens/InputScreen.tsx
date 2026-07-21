@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Stepper } from '../components/Stepper';
 import type { Step } from '../onboarding';
+import type { InputValidation } from '../validation';
 import { colors, radius, shadow, spacing, typography } from '../theme';
 
 export function InputScreen(props: {
@@ -12,8 +13,26 @@ export function InputScreen(props: {
   onChangeWebsite: (value: string) => void;
   reachedIndex: number;
   onSelect: (step: Step) => void;
+  validation: InputValidation;
 }) {
   const [focused, setFocused] = useState<'email' | 'website' | null>(null);
+  const { validation } = props;
+
+  const emailTouched = props.email.trim() !== '';
+  const websiteTouched = props.website.trim() !== '';
+
+  // Only surface messages once a field has content and isn't being edited, so we
+  // don't nag mid-typing.
+  const showEmailError =
+    emailTouched && !validation.emailValid && focused !== 'email';
+  const showMismatch =
+    websiteTouched && validation.websiteMismatch && focused !== 'website';
+
+  // Offer autofill when the email yields a business domain the website doesn't
+  // already contain.
+  const canAutofill =
+    validation.suggestedWebsite !== null &&
+    props.website.trim() !== validation.suggestedWebsite;
 
   return (
     <View>
@@ -42,12 +61,37 @@ export function InputScreen(props: {
             autoCorrect={false}
             keyboardType="email-address"
             textContentType="emailAddress"
-            style={[styles.input, focused === 'email' && styles.inputFocused]}
+            style={[
+              styles.input,
+              focused === 'email' && styles.inputFocused,
+              showEmailError && styles.inputError,
+            ]}
           />
+          {showEmailError && (
+            <Text style={styles.errorText}>
+              Enter a valid email address
+            </Text>
+          )}
         </View>
 
         <View style={styles.fieldLast}>
-          <Text style={styles.label}>Company Website</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.labelInline}>Company Website</Text>
+            {canAutofill && (
+              <Pressable
+                onPress={() =>
+                  props.onChangeWebsite(validation.suggestedWebsite ?? '')
+                }
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Autofill website from email domain"
+              >
+                <Text style={styles.autofillLink}>
+                  Use {validation.emailDomain}
+                </Text>
+              </Pressable>
+            )}
+          </View>
           <TextInput
             value={props.website}
             onChangeText={props.onChangeWebsite}
@@ -59,8 +103,17 @@ export function InputScreen(props: {
             autoCorrect={false}
             keyboardType="url"
             textContentType="URL"
-            style={[styles.input, focused === 'website' && styles.inputFocused]}
+            style={[
+              styles.input,
+              focused === 'website' && styles.inputFocused,
+              showMismatch && styles.inputWarning,
+            ]}
           />
+          {showMismatch && (
+            <Text style={styles.warnText}>
+              This doesn't match your email domain ({validation.emailDomain})
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -71,6 +124,14 @@ const styles = StyleSheet.create({
   h1: { ...typography.h1, marginBottom: spacing.sm },
   subtitle: { ...typography.subtitle, marginBottom: spacing.xxl },
   label: { ...typography.label, marginBottom: spacing.sm },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  labelInline: { ...typography.label },
+  autofillLink: { fontSize: 13, fontWeight: '600', color: colors.brand },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -96,4 +157,8 @@ const styles = StyleSheet.create({
     borderColor: colors.brand,
     backgroundColor: colors.surface,
   },
+  inputError: { borderColor: colors.danger },
+  inputWarning: { borderColor: colors.danger },
+  errorText: { marginTop: spacing.sm, fontSize: 13, color: colors.danger },
+  warnText: { marginTop: spacing.sm, fontSize: 13, color: colors.danger },
 });
