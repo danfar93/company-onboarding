@@ -28,7 +28,7 @@ export default function App() {
 }
 
 function Onboarding() {
-  const { state, dispatch, runEnrichment } = useOnboarding();
+  const { state, dispatch, runEnrichment, saveCompany } = useOnboarding();
   const validation = validateInput(state.input.email, state.input.website);
 
   return (
@@ -72,8 +72,9 @@ function Onboarding() {
 
           {state.step === 'review' && (
             <PrimaryButton
-              label="Looks good"
-              onPress={() => dispatch({ type: 'GO_TO_STEP', step: 'confirm' })}
+              label={state.status === 'saving' ? 'Saving…' : 'Looks good'}
+              onPress={() => saveCompany()}
+              loading={state.status === 'saving'}
             />
           )}
 

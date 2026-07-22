@@ -34,11 +34,17 @@ import {
 
 const SAVE_DEBOUNCE_MS = 400;
 
+/** Mock persisting the confirmed company record to a backend save endpoint. */
+const SAVE_LATENCY_MS = 1200;
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 interface OnboardingContextValue {
   state: OnboardingState;
   dispatch: React.Dispatch<Action>;
   /** Run the enrichment request for the current input (or an override). */
   runEnrichment: (override?: { email: string; website: string }) => Promise<void>;
+  /** Mock-save the reviewed record, then advance to the confirmation screen. */
+  saveCompany: () => Promise<void>;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -72,6 +78,14 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     },
     []
   );
+
+  const saveCompany = useCallback(async () => {
+    dispatch({ type: 'SAVE_START' });
+    // TODO (real app): POST the confirmed record to a save endpoint. Mocked here
+    // with a short delay so the saving state is exercised end-to-end.
+    await wait(SAVE_LATENCY_MS);
+    dispatch({ type: 'SAVE_SUCCESS' });
+  }, []);
 
   // (3) Hydrate on mount, before first paint. If a kill interrupted enrichment,
   // resume it with the stored input.
@@ -122,7 +136,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   if (!hydrated) return null; // brief; avoids flashing input before resuming
 
   return (
-    <OnboardingContext.Provider value={{ state, dispatch, runEnrichment }}>
+    <OnboardingContext.Provider
+      value={{ state, dispatch, runEnrichment, saveCompany }}
+    >
       {children}
     </OnboardingContext.Provider>
   );

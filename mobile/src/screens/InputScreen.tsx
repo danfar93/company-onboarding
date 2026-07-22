@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { Stepper } from '../components/Stepper';
 import { useOnboarding } from '../state/OnboardingContext';
@@ -111,6 +118,19 @@ export function InputScreen() {
           )}
         </View>
       </View>
+
+      {/*
+        Non-blocking enrichment loading: the form above stays fully editable
+        while this runs — the request happens in the background.
+      */}
+      {state.status === 'enriching' && (
+        <View style={styles.loadingBanner}>
+          <ActivityIndicator color={colors.brand} />
+          <Text style={styles.loadingText}>
+            Looking up your company - hold on tight..
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -156,4 +176,13 @@ const styles = StyleSheet.create({
   inputWarning: { borderColor: colors.danger },
   errorText: { marginTop: spacing.sm, fontSize: 13, color: colors.danger },
   warnText: { marginTop: spacing.sm, fontSize: 13, color: colors.danger },
+  loadingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.brandTint,
+    borderRadius: radius.md,
+  },
+  loadingText: { flex: 1, fontSize: 14, fontWeight: '500', color: colors.brandDark },
 });

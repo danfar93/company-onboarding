@@ -24,7 +24,7 @@ export interface EditableField {
 
 export type FieldMap = Partial<Record<Field, EditableField>>;
 
-export type Status = 'idle' | 'enriching' | 'error' | 'ready';
+export type Status = 'idle' | 'enriching' | 'error' | 'ready' | 'saving';
 
 export interface OnboardingState {
   version: number;
@@ -67,16 +67,21 @@ export type Action =
   | { type: 'ENRICH_ERROR'; message: string }
   | { type: 'EDIT_FIELD'; field: Field; value: unknown }
   | { type: 'GO_TO_STEP'; step: Step }
+  | { type: 'SAVE_START' }
+  | { type: 'SAVE_SUCCESS' }
   | { type: 'RESET' };
 
 export function reducer(state: OnboardingState, action: Action): OnboardingState {
   switch (action.type) {
-    case 'HYDRATE':
-      // A transient 'enriching' status can't survive a kill — reset it to idle
-      // so we can cleanly re-run rather than restore a spinner that never ends.
-      return action.state.status === 'enriching'
-        ? { ...action.state, status: 'idle' }
-        : action.state;
+    case 'HYDRATE': {
+      // Transient statuses can't survive a kill — reset them so we don't restore
+      // a spinner that never ends. 'enriching' is re-run by the provider;
+      // 'saving' drops back to the ready review so the user can retry.
+      const restored = action.state;
+      if (restored.status === 'enriching') return { ...restored, status: 'idle' };
+      if (restored.status === 'saving') return { ...restored, status: 'ready' };
+      return restored;
+    }
 
     case 'SET_INPUT':
       return {
@@ -124,6 +129,17 @@ export function reducer(state: OnboardingState, action: Action): OnboardingState
         ...state,
         step: action.step,
         maxReached: Math.max(state.maxReached, stepIndex(action.step)),
+      };
+
+    case 'SAVE_START':
+      return { ...state, status: 'saving' };
+
+    case 'SAVE_SUCCESS':
+      return {
+        ...state,
+        status: 'idle',
+        step: 'confirm',
+        maxReached: Math.max(state.maxReached, stepIndex('confirm')),
       };
 
     case 'RESET':
