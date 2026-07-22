@@ -1,6 +1,7 @@
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -63,11 +64,24 @@ function Onboarding() {
 
           {state.step === 'input' && (
             <PrimaryButton
-              label="Continue"
+              label={state.status === 'error' ? 'Try again' : 'Continue'}
               onPress={() => runEnrichment()}
               loading={state.status === 'enriching'}
               disabled={!validation.canContinue}
             />
+          )}
+
+          {state.step === 'input' && state.status === 'error' && (
+            <Pressable
+              onPress={() => dispatch({ type: 'PROCEED_MANUALLY' })}
+              style={styles.secondaryButton}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.secondaryButtonText}>
+                Enter details manually
+              </Text>
+            </Pressable>
           )}
 
           {state.step === 'review' && (
@@ -115,4 +129,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   errorText: { color: colors.danger, fontSize: 14 },
+
+  // Secondary action (e.g. proceed manually after an enrichment error)
+  secondaryButton: { alignItems: 'center', paddingVertical: spacing.sm },
+  secondaryButtonText: {
+    color: colors.brand,
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

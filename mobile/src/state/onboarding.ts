@@ -67,6 +67,7 @@ export type Action =
   | { type: 'ENRICH_ERROR'; message: string }
   | { type: 'EDIT_FIELD'; field: Field; value: unknown }
   | { type: 'GO_TO_STEP'; step: Step }
+  | { type: 'PROCEED_MANUALLY' }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_SUCCESS' }
   | { type: 'RESET' };
@@ -129,6 +130,22 @@ export function reducer(state: OnboardingState, action: Action): OnboardingState
         ...state,
         step: action.step,
         maxReached: Math.max(state.maxReached, stepIndex(action.step)),
+      };
+
+    case 'PROCEED_MANUALLY':
+      // Soft failure: enrichment couldn't run, so go to Review with empty,
+      // fully-editable fields and explain why — the user is never dead-ended.
+      return {
+        ...state,
+        step: 'review',
+        status: 'ready',
+        error: null,
+        fields: {},
+        sources: [],
+        warnings: [
+          "We couldn't reach the lookup service, so nothing was filled in automatically — please enter the details below.",
+        ],
+        maxReached: Math.max(state.maxReached, stepIndex('review')),
       };
 
     case 'SAVE_START':
