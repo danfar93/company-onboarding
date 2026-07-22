@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 
-import type { EnrichResponse } from './types';
+import type { EnrichResponse } from '@shared/types';
 
 // Resolve API base URL.
 // - If EXPO_PUBLIC_API_URL is set in .env, use it.

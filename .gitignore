@@ -25,3 +25,7 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 *.log
+
+# Test output
+test-results/
+coverage/

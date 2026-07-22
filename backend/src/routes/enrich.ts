@@ -1,38 +1,9 @@
 import { Router, Request, Response } from 'express';
 
+import type { EnrichRequest, EnrichResponse } from '../enrichment/types';
+import { enrichCompany } from '../enrichment/orchestrator';
+
 const router = Router();
-
-type EnrichRequest = {
-  email: string;
-  website: string;
-};
-
-type CompanyData = {
-  name?: string;
-  registrationNumber?: string;
-  registeredAddress?: {
-    line1?: string;
-    line2?: string;
-    city?: string;
-    region?: string;
-    postalCode?: string;
-    country?: string;
-  };
-  incorporationDate?: string;
-  companyType?: string;
-  industry?: string;
-  status?: string;
-};
-
-type EnrichmentMetadata = {
-  sources: string[];
-  confidence: Record<string, 'high' | 'medium' | 'low'>;
-};
-
-type EnrichResponse = {
-  company: CompanyData;
-  enrichment: EnrichmentMetadata;
-};
 
 router.post('/', async (req: Request<{}, {}, EnrichRequest>, res: Response) => {
   const { email, website } = req.body;
@@ -41,38 +12,20 @@ router.post('/', async (req: Request<{}, {}, EnrichRequest>, res: Response) => {
     return res.status(400).json({ error: 'Email and website are required' });
   }
 
-  // TODO: Implement your enrichment logic here
-  //
-  // 1. Extract domain from website
-  // 2. Query data sources (Companies House, web search, website scraping, etc.)
-  // 3. Merge and validate results
-  // 4. Return enriched company data with confidence scores
-  //
-  // Example response structure:
-  // {
-  //   company: {
-  //     name: "Acme Ltd",
-  //     registrationNumber: "12345678",
-  //     ...
-  //   },
-  //   enrichment: {
-  //     sources: ["Companies House", "Website"],
-  //     confidence: {
-  //       name: "high",
-  //       industry: "medium"
-  //     }
-  //   }
-  // }
-
-  const response: EnrichResponse = {
-    company: {},
-    enrichment: {
-      sources: [],
-      confidence: {},
-    },
-  };
-
-  res.json(response);
+  try {
+    const response = await enrichCompany(email, website);
+    res.json(response);
+  } catch (err) {
+    // The pipeline degrades gracefully internally, so reaching here is
+    // unexpected. Return a valid, empty contract with the error surfaced as a
+    // warning rather than failing the request — the user can still onboard.
+    const message = err instanceof Error ? err.message : 'Enrichment failed';
+    const response: EnrichResponse = {
+      company: {},
+      enrichment: { sources: [], confidence: {}, fieldSources: {}, warnings: [message] },
+    };
+    res.status(200).json(response);
+  }
 });
 
 export { router as enrichRouter };
