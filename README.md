@@ -210,7 +210,7 @@ the flow branched, needed deep links, or wanted native screen transitions.
 
 ---
 
-## What I'd improve with more time
+## Future Improvements
 
 - **Website corroboration for confidence** — cross-check the Companies House
   match against the site's self-reported name and only report *high* when they
@@ -218,22 +218,16 @@ the flow branched, needed deep links, or wanted native screen transitions.
 - **Smarter confidence scoring** — the current score is name-token coverage;
   a symmetric similarity plus ambiguity and company-status awareness would stop
   over-confident matches on common/generic names.
-- **A real `POST /companies` save endpoint** — the confirmation save is
-  currently mocked client-side.
+- **A real `POST /companies` save endpoint** — persist the confirmed record for
+  the confirmation flow (currently mocked client-side).
 - **Finer industry mapping** — the SIC → industry bucket is coarse.
 - **Shared contract as a workspace package** — today the mobile app imports the
   backend's `types.ts` via a `@shared` path alias (erased at build since it's
   type-only); a proper shared package would be cleaner.
 - **More tests** — component/integration tests for the screens and an E2E pass.
-
----
-
-## Future Improvements
-
 - **Multi-agent orchestration** for the monorepo setup — a dedicated backend
   agent and a mobile agent.
 - **Richer data-entry types** — date pickers, dropdowns, etc.
-- **`POST /companies`** for the confirmation flow to persist the enriched record.
 - **Loading-state animations.**
 - **Haptic feedback** for improved UX.
 - **Accessibility & landscape** support.
