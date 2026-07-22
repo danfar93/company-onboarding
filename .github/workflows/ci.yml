@@ -11,7 +11,8 @@ concurrency:
 
 permissions:
   contents: read
-  checks: write # allow the test reporter to publish a results check
+  checks: write # test-results check
+  pull-requests: write # comment the results table on the PR
 
 jobs:
   backend:
@@ -38,17 +39,9 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish test results
-        uses: dorny/test-reporter@v1
-        if: always() # report results even when tests fail
-        with:
-          name: Backend test results
-          path: backend/test-results/junit.xml
-          reporter: java-junit
-
-      - name: Upload results artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() # vitest writes JUnit even when tests fail
         with:
           name: backend-test-results
           path: backend/test-results/junit.xml
@@ -78,18 +71,29 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish test results
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Mobile test results
-          path: mobile/test-results/junit.xml
-          reporter: java-junit
-
-      - name: Upload results artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mobile-test-results
           path: mobile/test-results/junit.xml
           if-no-files-found: ignore
+
+  report:
+    name: Test Results
+    runs-on: ubuntu-latest
+    needs: [backend, mobile]
+    if: always() # report even if a suite failed
+    steps:
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish results table to the PR
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: artifacts/**/junit.xml
+          check_name: Test Results
+          comment_title: Test Results
+          comment_mode: always
