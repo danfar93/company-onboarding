@@ -49,14 +49,87 @@ jobs:
           npm run typecheck
           npm test
 
-      - name: Publish results table to the PR
+      - name: Comment test results table on the PR
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: actions/github-script@v7
         with:
-          files: "**/test-results/junit.xml"
-          check_name: Test Results
-          comment_title: Test Results
-          comment_mode: always
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const decode = (s) => s
+              .replace(/&gt;/g, '>').replace(/&lt;/g, '<')
+              .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+              .replace(/&amp;/g, '&');
+            // (?:^|\\s) so `name` doesn't also match inside `classname`.
+            const attr = (tag, name) => {
+              const m = tag.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`));
+              return m ? decode(m[1]) : '';
+            };
+            function parse(file) {
+              if (!fs.existsSync(file)) return [];
+              const xml = fs.readFileSync(file, 'utf8');
+              const cases = [];
+              const re = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+              let m;
+              while ((m = re.exec(xml))) {
+                const inner = m[2] || '';
+                const status = /<failure/.test(inner) ? 'failed'
+                  : /<skipped/.test(inner) ? 'skipped' : 'passed';
+                cases.push({ suite: path.basename(attr(m[1], 'classname')), name: attr(m[1], 'name'), status });
+              }
+              return cases;
+            }
+            const ICON = { passed: '✅', failed: '❌', skipped: '⏭️' };
+            const tally = (cs) => {
+              const t = { total: cs.length, passed: 0, failed: 0, skipped: 0 };
+              for (const c of cs) t[c.status]++;
+              t.suites = new Set(cs.map((c) => c.suite)).size;
+              return t;
+            };
+            function details(label, cs) {
+              const t = tally(cs);
+              if (!cs.length) return `<details><summary><b>${label}</b> — no results</summary>\n\n_No test output was produced._\n</details>`;
+              const rows = cs.map((c) => `| \`${c.suite}\` | ${c.name.replace(/ > /g, ' › ')} | ${ICON[c.status]} |`).join('\n');
+              return [
+                `<details${t.failed ? ' open' : ''}><summary><b>${label}</b> — ${t.total} tests${t.failed ? `, ${t.failed} failed ❌` : ' ✅'}</summary>`,
+                '', '| Suite | Test | Result |', '| :-- | :-- | :--: |', rows, '</details>',
+              ].join('\n');
+            }
+            const backend = parse('backend/test-results/junit.xml');
+            const mobile = parse('mobile/test-results/junit.xml');
+            const b = tally(backend), m = tally(mobile);
+            const failed = b.failed + m.failed;
+            const marker = '<!-- ci-test-results -->';
+            const body = [
+              marker,
+              `## 🧪 Test Results — ${failed ? `${failed} failed ❌` : 'all passing ✅'}`,
+              '',
+              '| Package | Suites | Tests | ✅ Passed | ❌ Failed | ⏭️ Skipped |',
+              '| :-- | --: | --: | --: | --: | --: |',
+              `| **Backend** | ${b.suites} | ${b.total} | ${b.passed} | ${b.failed} | ${b.skipped} |`,
+              `| **Mobile** | ${m.suites} | ${m.total} | ${m.passed} | ${m.failed} | ${m.skipped} |`,
+              `| **Total** | ${b.suites + m.suites} | ${b.total + m.total} | ${b.passed + m.passed} | ${b.failed + m.failed} | ${b.skipped + m.skipped} |`,
+              '',
+              details('Backend', backend),
+              '',
+              details('Mobile', mobile),
+              '',
+              `<sub>Updated for ${context.sha.slice(0, 7)}</sub>`,
+            ].join('\n');
+            const issue_number = context.issue.number;
+            if (!issue_number) return;
+            const { owner, repo } = context.repo;
+            try {
+              const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+              const existing = comments.find((c) => c.body && c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              }
+            } catch (err) {
+              core.warning(`Could not post results comment (likely a fork PR with a read-only token): ${err.message}`);
+            }
 
       - name: Fail if any suite failed
         if: steps.backend.outcome == 'failure' || steps.mobile.outcome == 'failure'
